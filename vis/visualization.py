@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import cv2
+#import cv2
 import numpy as np
 import matplotlib.cm as cm
 import pprint
@@ -170,6 +170,26 @@ def visualize_saliency(model, layer_idx, filter_indices,
     return heatmap[0]
 
 
+from PIL import Image
+
+
+def resize_grayscale_image(img, output_shape):
+    img_pil = Image.fromarray(img[k], mode='F')
+    img_pil = img_pil.resize(output_shape, resample=Image.LANCZOS)
+    return np.array(img_pil)
+
+
+def resize_keras_image(img, output_shape):
+    out_img = np.empty(output_shape, dtype=img.dtype)
+    if K.image_data_format() == 'channels_first':
+        for k in range(img.shape[0]):
+            out_img[k,...] = resize_grayscale_image(img[k,...], output_shape[1:])
+    else:
+        for k in range(img.shape[2]):
+            out_img[...,k] = resize_grayscale_image(img[...,k], output_shape[:2])
+    return out_img
+
+
 def visualize_cam(model, layer_idx, filter_indices,
                   seed_img, penultimate_layer_idx=None, alpha=0.5):
     """Generates a gradient based class activation map (CAM) as described in paper
@@ -266,7 +286,8 @@ def visualize_cam(model, layer_idx, filter_indices,
 
     # TODO: Figure out a way to get rid of open cv dependency.
     # skimage doesn't deal with arbitrary floating point ranges.
-    heatmap = cv2.resize(heatmap, input_dims, interpolation=cv2.INTER_CUBIC)
+    #heatmap = cv2.resize(heatmap, input_dims, interpolation=cv2.INTER_CUBIC)
+    heatmap = resize_keras_image(heatmap, input_dims)
 
     # ReLU thresholding, normalize between (0, 1)
     heatmap = np.maximum(heatmap, 0)
